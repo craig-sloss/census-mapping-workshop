@@ -1,0 +1,69 @@
+---
+title: "Workshop -- Exploring Census Mapping Data"
+author: "Craig A. Sloss"
+date: "2023-04-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup
+
+Run this code to load the packages used in this notebook:
+```{r}
+library(tidyverse)
+library(sf)
+library(leaflet)
+```
+
+Download the Census Cartographic Dissemination Area Shapefile from here: https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/index2021-eng.cfm?Year=21
+
+Unzip the file and place the folder in the project directory
+
+Load the file
+
+# Visualize the file
+
+Create a map with just a base layer using the addProviderTiles function
+
+Type help(addProviderTiles) to explore some of the options available
+
+Import the Census DA file
+
+Plot the outline of the DA boundaries on the map
+
+# Identify Waterloo Region
+
+To find out which DAs correspond to each city, download the geography relationship file here: https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/dguid-idugd/index2021-eng.cfm?year=21
+
+Place the file in the project folder
+
+Import the file into R
+
+Work through understanding this sample code:
+
+```{r}
+da_list = data.frame(DAUID = shapefile$DAUID, DGUID = shapefile$DGUID)
+csd_list = data.frame(DGUID = census_subdivision$DGUID, CSDNAME = census_subdivision$CSDNAME)
+cd_list = data.frame(DGUID = census_division$DGUID, CDNAME = census_division$CDNAME)
+relationship_file_unique = relationship_file %>% 
+  distinct(DADGUID_ADIDUGD, CSDDGUID_SDRIDUGD, CDDGUID_DRIDUGD) 
+lookup_table = da_list %>%
+  left_join(relationship_file_unique, by = c("DGUID" = "DADGUID_ADIDUGD")) %>%
+  left_join(csd_list, by = c("CSDDGUID_SDRIDUGD" = "DGUID")) %>%
+  left_join(cd_list, by = c("CDDGUID_DRIDUGD" = "DGUID"))
+waterloo_region_lookup = lookup_table %>%
+  filter(CDNAME == "Waterloo") %>%
+  select(DAUID, CSDNAME)
+saveRDS(waterloo_region_lookup, "./waterloo_region_DA_lookup.rds")
+```
+
+Join the lookup file to the shape file. 
+
+Filter so that only one city appears.
+
+Replot the map.
+
+Save the shapefile for later use.

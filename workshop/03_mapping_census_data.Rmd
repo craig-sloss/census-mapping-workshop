@@ -1,0 +1,41 @@
+---
+title: "Workshop -- Mapping Census Data"
+author: "Craig A. Sloss"
+date: "2023-04-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup
+
+Run this code to install the packages needed:
+
+```{r}
+library(tidyverse)
+library(sf)
+library(leaflet)
+library(ggplot2)
+library(RColorBrewer)
+```
+
+# Creating the maps
+
+Merge census data into the shape file
+
+Shade DA cells based on the census value
+
+Explore RColorBrewer colour ramps to improve the visualization
+
+# Extras
+
+Hide code for presentation purposes
+
+Add sidewalks or schools:
+
+* City of Waterloo Open Data, 2019 Sidewalks (https://data.waterloo.ca/datasets/City-of-Waterloo::sidewalks/about)
+
+* City of Waterloo Open Data, 2018 Schools (https://data.waterloo.ca/datasets/City-of-Waterloo::schools/about)
+
