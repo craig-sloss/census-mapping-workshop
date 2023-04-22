@@ -18,3 +18,5 @@ Sample code and instructions for an introductory workshop on generating maps usi
 * Enter the following Repository URL: https://posit.co/download/rstudio-desktop/
 
 * Select a location and name for the folder to contain project files
+
+* In the console, run the following code: install.packages(c("tidyverse", "sf", "leaflet", "ggplot2", "RColorBrewer"))

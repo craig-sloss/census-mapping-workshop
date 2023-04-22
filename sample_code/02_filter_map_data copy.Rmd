@@ -1,0 +1,79 @@
+---
+title: "Process Census DA Shapefile"
+author: "Craig A. Sloss"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sf)
+library(ggplot2)
+```
+
+# Import shapefile
+
+```{r}
+shapefile = read_sf(dsn = "../lda_000b21a_e", layer = "lda_000b21a_e")
+census_division = read_sf(dsn = "../lcd_000b21a_e", layer = "lcd_000b21a_e")
+census_subdivision = read_sf(dsn = "../lcsd000b21a_e", layer = "lcsd000b21a_e")
+```
+
+```{r}
+relationship_file = read_csv("./2021_98260004.csv", col_types = "cccccccccccccccc")
+```
+
+
+```{r}
+da_list = data.frame(DAUID = shapefile$DAUID, DGUID = shapefile$DGUID)
+csd_list = data.frame(DGUID = census_subdivision$DGUID, CSDNAME = census_subdivision$CSDNAME)
+cd_list = data.frame(DGUID = census_division$DGUID, CDNAME = census_division$CDNAME)
+relationship_file_unique = relationship_file %>% 
+  distinct(DADGUID_ADIDUGD, CSDDGUID_SDRIDUGD, CDDGUID_DRIDUGD) 
+lookup_table = da_list %>%
+  left_join(relationship_file_unique, by = c("DGUID" = "DADGUID_ADIDUGD")) %>%
+  left_join(csd_list, by = c("CSDDGUID_SDRIDUGD" = "DGUID")) %>%
+  left_join(cd_list, by = c("CDDGUID_DRIDUGD" = "DGUID"))
+waterloo_region_lookup = lookup_table %>%
+  filter(CDNAME == "Waterloo") %>%
+  select(DAUID, CSDNAME)
+saveRDS(waterloo_region_lookup, "./waterloo_region_DA_lookup.rds")
+```
+
+```{r}
+waterloo_region_shapefile = shapefile %>%
+  left_join(waterloo_region_lookup) %>%
+  subset(!is.na(CSDNAME))
+ggplot(data = waterloo_region_shapefile) +
+  geom_sf()
+```
+
+```{r}
+waterloo_shapefile = shapefile %>%
+  left_join(waterloo_region_lookup) %>%
+  subset(CSDNAME == "Waterloo")
+ggplot(data = waterloo_shapefile) +
+  geom_sf()
+```
+
+```{r}
+kitchener_shapefile = shapefile %>%
+  left_join(waterloo_region_lookup) %>%
+  subset(CSDNAME == "Kitchener")
+ggplot(data = kitchener_shapefile) +
+  geom_sf()
+```
+
+```{r}
+st_write(waterloo_region_shapefile, "waterloo_region_DA.shp", append = FALSE)
+st_write(waterloo_shapefile, "waterloo_DA.shp", append = FALSE)
+st_write(kitchener_shapefile, "kitchener_DA.shp", append = FALSE)
+```
+
+```{r}
+WR_DA = combined$DAUID
+saveRDS(WR_DA, "./list_of_waterloo_region_DA.rds")
+```
+
+

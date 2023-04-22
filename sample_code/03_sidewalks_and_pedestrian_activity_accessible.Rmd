@@ -1,0 +1,145 @@
+---
+title: "Comparison of Privately-Cleared Sidewalks and Census Indicators of Pedestrian Activity in Waterloo, ON"
+author: "Craig A. Sloss"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(sf)
+library(leaflet)
+library(ggplot2)
+library(RColorBrewer)
+census = readRDS("./snow_clearing_dataset.rds")
+percentage_walk_dataset = census %>%
+  filter(CHARACTERISTIC_NAME %in% c("Walked", "Public transit")) %>%
+  group_by(GEO_NAME) %>%
+  summarise(walk_or_transit = sum(C10_RATE_TOTAL, na.rm = TRUE))
+percentage_school_age_dataset = census %>%
+  filter(CHARACTERISTIC_NAME %in% c("5 to 9 years", "10 to 14 years", "15 to 19 years")) %>%
+  group_by(GEO_NAME) %>%
+  summarise(school_age = sum(C10_RATE_TOTAL, na.rm = TRUE))
+waterloo_map = read_sf(dsn = "./waterloo", layer = "waterloo_DA") %>% 
+  st_transform("+proj=longlat +datum=WGS84") %>%
+  left_join(percentage_walk_dataset %>% rename(DAUID = GEO_NAME)) %>%
+  left_join(percentage_school_age_dataset %>% rename(DAUID = GEO_NAME)) %>%
+  subset(!is.na(walk_or_transit))
+sidewalk_map = read_sf(dsn = "./Sidewalks", layer = "Sidewalks") %>% 
+  st_transform("+proj=longlat +datum=WGS84")
+school_map = read_sf(dsn = "./Schools", layer = "Schools") %>%
+  st_transform("+proj=longlat +datum=WGS84")
+```
+
+#### Responsibility for Sidewalk Snow Clearing
+```{r}
+pal <- colorFactor(palette = "Accent", domain = sidewalk_map$CLEARED_BY)
+leaflet(sidewalk_map) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolylines(color = ~pal(CLEARED_BY), opacity = 1, weight = 2) %>%
+  addLegend(pal = pal, values = ~CLEARED_BY, title = "")
+```
+
+#### Percentage of Residents Commuting by Walking or Public Transit -- sidewalks cleared by private owner
+
+Black lines indicate City-owned sidewalks where responsibility for clearing snow lies with the private owner, as of 2019
+
+```{r}
+pal <- colorNumeric(
+  palette = "Purples",
+  domain = waterloo_map$walk_or_transit
+)
+leaflet(waterloo_map) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(data = waterloo_map,
+              weight = 0,
+              color = ~pal(walk_or_transit),
+              fillOpacity = 0.5) %>%
+  addLegend(pal = pal, values = ~walk_or_transit, title = "") %>%
+  addPolylines(data = sidewalk_map %>% filter(CLEARED_BY == "Private Owner"),
+               color = "#000000", 
+               opacity = 1, 
+               weight = 1)
+```
+
+#### Percentage of Residents Commuting by Walking or Public Transit vs. City-cleared Sidewalks
+
+Black lines indicate City-owned sidewalks where the city takes responsibility for clearing snow, as of 2019
+
+```{r}
+pal <- colorNumeric(
+  palette = "Purples",
+  domain = waterloo_map$walk_or_transit
+)
+leaflet(waterloo_map) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(data = waterloo_map,
+              weight = 0,
+              color = ~pal(walk_or_transit),
+              fillOpacity = 0.5) %>%
+  addLegend(pal = pal, values = ~walk_or_transit, title = "") %>%
+  addPolylines(data = sidewalk_map %>% filter(CLEARED_BY == "City Crews"),
+               color = "#000000", 
+               opacity = 1, 
+               weight = 1)
+```
+
+#### Percentage of Residents Aged 5-19 -- sidewalks cleared by private owner
+
+This map is intended to identify residents who may need to use sidewalks to reach elementary or secondary schools. Blue markers indicate locations of elementary and secondary schools. Black lines indicate City-owned sidewalks where responsibility for clearing snow lies with the private owner, as of 2019
+
+```{r}
+pal <- colorNumeric(
+  palette = "Purples",
+  domain = waterloo_map$school_age
+)
+leaflet(waterloo_map) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(weight = 0,
+              color = ~pal(school_age),
+              fillOpacity = 0.5) %>%
+  addLegend(pal = pal, values = ~school_age, title = "") %>%
+  addPolylines(data = sidewalk_map %>% filter(CLEARED_BY == "Private Owner"),
+               color = "#000000", 
+               opacity = 1, 
+               weight = 1) %>%
+  addMarkers(data = school_map %>% filter(CLASS %in% c("ELEMENTARY", "SECONDARY")),
+             label = ~NAME)
+```
+
+
+#### Percentage of Residents Aged 5-19 -- city-cleared sidewalks
+
+This map is intended to identify residents who may need to use sidewalks to reach elementary or secondary schools. Blue markers indicate locations of elementary and secondary schools. Black lines indicate City-owned sidewalks where the city takes repsonsibility for clearing its own sidewalks, as of 2019
+
+```{r}
+pal <- colorNumeric(
+  palette = "Purples",
+  domain = waterloo_map$school_age
+)
+leaflet(waterloo_map) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(weight = 0,
+              color = ~pal(school_age),
+              fillOpacity = 0.5) %>%
+  addLegend(pal = pal, values = ~school_age, title = "") %>%
+  addPolylines(data = sidewalk_map %>% filter(CLEARED_BY == "City Crews"),
+               color = "#000000", 
+               opacity = 1, 
+               weight = 1) %>%
+  addMarkers(data = school_map %>% filter(CLASS %in% c("ELEMENTARY", "SECONDARY")),
+             label = ~NAME)
+```
+
+#### Data sources 
+
+* Statistics Canada, 2021 Census of Population (https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/details/download-telecharger.cfm?Lang=E)
+
+* Statistics Canada, 2021 Census Boundaries (https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/index2021-eng.cfm?Year=21)
+
+* City of Waterloo Open Data, 2019 Sidewalks (https://data.waterloo.ca/datasets/City-of-Waterloo::sidewalks/about)
+
+* City of Waterloo Open Data, 2018 Schools (https://data.waterloo.ca/datasets/City-of-Waterloo::schools/about)
