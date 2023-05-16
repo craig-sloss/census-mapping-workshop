@@ -47,3 +47,6 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Project-specific folders
+./case_studies/rental_data/data

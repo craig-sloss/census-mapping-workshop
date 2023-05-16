@@ -1,0 +1,136 @@
+---
+title: "Rental Data Mapping - Data Preparation"
+author: "Craig A. Sloss"
+date: "2023-05-15"
+output: html_document
+---
+
+# Introduction
+
+This notebook extracts and prepares data used to create maps visualizing rental-related census data. The data preparation largely relates to filtering the source data so that the files used are smaller and easier to work with.
+
+This code chunk sets options for the notebook and imports relevant packages.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+dir.create("./data")
+dir.create("./data/da_shapefile")
+dir.create("./data/cd_shapefile")
+dir.create("./data/csd_shapefile")
+library(tidyverse)
+library(curl)
+library(sf)
+```
+
+# Census tabular data
+
+## Download data
+
+This code chunk downloads census data from the Statistics Canada website, unzips the file, and imports it as an R data frame. The raw dataset is quite large, so this takes a while to complete. This code downloads the file for Ontario; to switch to another province, copy the URL for that province from this site: https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/details/download-telecharger.cfm?Lang=E
+(Look for the data named "Canada, provinces, territories, census divisions (CDs), census subdivisions (CSDs) and dissemination areas (DAs)" and copy the link for the CSV.)
+
+To limit the amount of data loaded into memory, import only the following columns:
+
+* DGUID (character) is the code identifying the geographic area
+
+* GEO_LEVEL (character) is the level of granularity of the geographic area
+
+* CHARACTERISTIC_NAME (character) is the name of the quantity being measured
+
+* C1_COUNT_TOTAL (numeric) is the total number of the quantity described by CHARACTERISTIC_NAME
+
+* C10_RATE_TOTAL (numeric) is the quantity described by CHARACTERISTIC_NAME, expressed as a percentage of the population.
+
+```{r}
+curl_download("https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/details/download-telecharger/comp/GetFile.cfm?Lang=E&FILETYPE=CSV&GEONO=006_Ontario", "./data/census_full.zip")
+unzip("./data/census_full.zip", exdir = "./data")
+census_selected_columns = read_csv("./data/98-401-X2021006_English_CSV_data_Ontario.csv", col_types = "-c-c-----c-n-----n-----")
+```
+
+## Explore data
+
+List out the quantities (CHARACTERISTIC_NAME) in the data to identify ones to focus on:
+```{r}
+unique_characteristics = census_selected_columns %>% 
+  distinct(CHARACTERISTIC_NAME)
+unique_characteristics
+```
+
+Limit dataset to the following quantities:
+```{r}
+selected_characteristics = c("Renter",
+                             "Spending 30% or more of income on shelter costs")
+```
+
+Limit data to the Dissemination Area level, and the characteristics listed above.
+```{r}
+census_DA_short = census_selected_columns %>%
+  filter(GEO_LEVEL == "Dissemination area" &
+           CHARACTERISTIC_NAME %in% selected_characteristics)
+```
+
+Save the dataset for use in later notebooks:
+```{r}
+saveRDS(census_DA_short, "./data/selected_census_records.rds")
+```
+
+# Mapping data
+
+## Download shapefiles
+
+These shapefiles are obtained from the following Statistics Canada website: https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/index2021-eng.cfm?Year=21. Select the following options:
+
+* Type = Cartographic Boundary File
+
+* Select a desired Administrative Boundary (for Census Divisions or Census Subdivisions) or Statistical Boundary (for Dissemination Area)
+
+* Format = Shapefile
+
+This is the Dissemination Area shapefile:
+
+```{r}
+curl_download("https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lda_000b21a_e.zip", "./data/da_shapefile/da_shapefile.zip")
+unzip("./data/da_shapefile/da_shapefile.zip", exdir = "./data/da_shapefile")
+da_shapefile = read_sf(dsn = "./data/da_shapefile", layer = "lda_000b21a_e")
+```
+
+This is the Census Subdivision shapefile:
+
+```{r}
+curl_download("https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lcd_000b21a_e.zip", "./data/cd_shapefile/cd_shapefile.zip")
+unzip("./data/cd_shapefile/cd_shapefile.zip", exdir = "./data/cd_shapefile")
+census_division = read_sf(dsn = "./data/cd_shapefile", layer = "lcd_000b21a_e")
+```
+
+This is the Census Division shapefile:
+
+```{r}
+curl_download("https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lcsd000b21a_e.zip", "./data/csd_shapefile/csd_shapefile.zip")
+unzip("./data/csd_shapefile/csd_shapefile.zip", exdir = "./data/csd_shapefile")
+census_subdivision = read_sf(dsn = "./data/csd_shapefile", layer = "lcsd000b21a_e")
+```
+
+## Download geography relationship file
+
+This file from Statistics Canada documents the relationship between various levels of geography. It can be used to identify which Dissemination Areas are within each city, region, etc. For an explanation of this file, please see this page: https://www150.statcan.gc.ca/n1/pub/98-26-0003/982600032021001-eng.htm
+
+```{r}
+curl_download("https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/dguid-idugd/files-fichiers/2021_98260004.zip", "./data/relationship_file.zip")
+unzip("./data/relationship_file.zip", exdir = "./data")
+relationship_file = read_csv("./data/2021_98260004.csv", col_types = "cccccccccccccccc")
+```
+
+
+
+```{r}
+da_list = data.frame(DAUID = da_shapefile$DAUID, DGUID = da_shapefile$DGUID)
+csd_list = data.frame(DGUID = census_subdivision$DGUID, CSDNAME = census_subdivision$CSDNAME)
+cd_list = data.frame(DGUID = census_division$DGUID, CDNAME = census_division$CDNAME)
+relationship_file_unique = relationship_file %>% 
+  distinct(DADGUID_ADIDUGD, CSDDGUID_SDRIDUGD, CDDGUID_DRIDUGD) 
+da_lookup_table = da_list %>%
+  left_join(relationship_file_unique, by = c("DGUID" = "DADGUID_ADIDUGD")) %>%
+  left_join(csd_list, by = c("CSDDGUID_SDRIDUGD" = "DGUID")) %>%
+  left_join(cd_list, by = c("CDDGUID_DRIDUGD" = "DGUID"))
+saveRDS(da_lookup_table, "./data/da_lookup_table.rds")
+```
