@@ -26,7 +26,8 @@ waterloo_region_map = read_sf(dsn = "./data/da_shapefile", layer = "lda_000b21a_
   left_join(da_lookup) %>%
   filter(CDNAME == "Waterloo") %>%
   left_join(percentage_renter_dataset %>% rename(DAUID = GEO_NAME)) %>%
-  left_join(percentage_high_housing_cost_dataset %>% rename(DAUID = GEO_NAME))
+  left_join(percentage_high_housing_cost_dataset %>% rename(DAUID = GEO_NAME)) %>%
+  mutate(combined_renter_and_high_cost = pct_renter * pct_high_housing_cost / 100)
 ```
 
 #### Percentage of Renters in Waterloo Region
@@ -47,7 +48,7 @@ leaflet(waterloo_region_map) %>%
 
 #### Percentage of Residents Paying More than 30% or more of Income on Shelter
 
-Note that this includes both owners and tenants..
+Note that this includes both owners and tenants.
 
 ```{r}
 pal <- colorNumeric(
@@ -61,6 +62,24 @@ leaflet(waterloo_region_map) %>%
               color = ~pal(pct_high_housing_cost),
               fillOpacity = 0.5) %>%
   addLegend(pal = pal, values = ~pct_high_housing_cost, title = "") 
+```
+
+#### Combining Rental Rates and High Housing Cost Rates
+
+This map combines the percentage of renters and the percentage of residents with high housing costs into a single metric that identifies areas where both percentages are high. It should not be interpreted directly as a percentage.
+
+```{r}
+pal <- colorNumeric(
+  palette = "Purples",
+  domain = waterloo_region_map$combined_renter_and_high_cost
+)
+leaflet(waterloo_region_map) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(data = waterloo_region_map,
+              weight = 0,
+              color = ~pal(combined_renter_and_high_cost),
+              fillOpacity = 0.5) %>%
+  addLegend(pal = pal, values = ~combined_renter_and_high_cost, title = "") 
 ```
 
 #### Data sources 
