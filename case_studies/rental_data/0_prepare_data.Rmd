@@ -58,8 +58,10 @@ unique_characteristics
 
 Limit dataset to the following quantities:
 ```{r}
-selected_characteristics = c("Renter",
-                             "Spending 30% or more of income on shelter costs")
+selected_characteristics = c("Population, 2021",
+                             "Renter",
+                             "Spending 30% or more of income on shelter costs",
+                             "Total - Private households by tenure - 25% sample data")
 ```
 
 Limit data to the Dissemination Area level, and the characteristics listed above.

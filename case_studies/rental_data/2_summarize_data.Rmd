@@ -1,0 +1,65 @@
+---
+title: "Housing-related Census Data in the Region of Waterloo"
+author: "Craig A. Sloss"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+census = readRDS("./data/selected_census_records.rds")
+da_lookup = readRDS("./data/da_lookup_table.rds")
+percentage_renter_dataset = census %>%
+  filter(CHARACTERISTIC_NAME == "Renter") %>%
+  select(GEO_NAME, pct_renter = C10_RATE_TOTAL)
+rental_weight_dataset = census %>%
+  filter(CHARACTERISTIC_NAME == "Total - Private households by tenure - 25% sample data") %>%
+  select(GEO_NAME, rental_weight = C1_COUNT_TOTAL)
+population_dataset = census %>%
+  filter(CHARACTERISTIC_NAME == "Population, 2021") %>%
+  select(GEO_NAME, population = C1_COUNT_TOTAL)
+combined_dataset = percentage_renter_dataset %>%
+  left_join(population_dataset) %>%
+  left_join(rental_weight_dataset) %>%
+  left_join(da_lookup %>% rename(GEO_NAME = DAUID))
+```
+
+#### Percentage of Renters by City in Region of Waterloo
+
+Note: census percentages of renters are an estimate based on 25% of the population. Therefore the numbers below will be an approximation of the true number.
+
+```{r}
+combined_dataset %>%
+  filter(CDNAME == "Waterloo") %>%
+  group_by(CSDNAME) %>%
+  summarise(total_population = sum(population, na.rm = TRUE),
+            pct_renter_estimate = round(sum(rental_weight * pct_renter, na.rm = TRUE) / sum(rental_weight, na.rm = TRUE), 1),
+            renter_count_estimate = round(pct_renter_estimate * total_population / 100, 0)) %>%
+  rename(Municipality = CSDNAME,
+         `Total Population` = total_population,
+         `Renters -- Estimated Percent` = pct_renter_estimate,
+         `Renters -- Estimated Count` = renter_count_estimate) %>%
+  knitr::kable()
+```
+
+#### Percentage of Renters -- Region of Waterloo vs Other Census Divisions in Ontario
+
+Note: census percentages of renters are an estimate based on 25% of the population. Therefore the numbers below will be an approximation of the true number.
+
+```{r}
+combined_dataset %>%
+  filter(!is.na(CDNAME)) %>%
+  group_by(CDNAME) %>%
+  summarise(total_population = sum(population, na.rm = TRUE),
+            pct_renter_estimate = round(sum(rental_weight * pct_renter, na.rm = TRUE) / sum(rental_weight, na.rm = TRUE), 1),
+            renter_count_estimate = round(pct_renter_estimate * total_population / 100, 0)) %>%
+  arrange(-renter_count_estimate) %>%
+  rename(`Census Division` = CDNAME,
+         `Total Population` = total_population,
+         `Renters -- Estimated Percent` = pct_renter_estimate,
+         `Renters -- Estimated Count` = renter_count_estimate) %>%
+  knitr::kable()
+```

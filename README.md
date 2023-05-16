@@ -34,3 +34,5 @@ The files are:
 * 0_prepare_data.Rmd: This downloads data from the Statistics Canada website, and prepares it for later use. The preparation largely consists of reducing the data to a reasonable size by filtering out data not relevant to the case study. This notebook is time-consuming to run due to the size the raw data files.
 
 * 1_create_maps.Rmd: This imports the data that is created by the previous notebook and generates maps of Waterloo Region displaying the census data. It is intended to be used by knitting the file to HTML.
+
+* 2_summarize_data.Rmd: This summarizes the census data in tabular format, both by Census Subdivision (i.e. municipality) and Census Division (i.e region)
