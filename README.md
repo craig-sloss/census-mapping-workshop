@@ -27,7 +27,7 @@ Sample code and instructions for an introductory workshop on generating maps usi
 
 This appears in the folder ./case_studies/rental_data and demonstrates how to create a map displaying some rental-related census data. 
 
-Before running the files, run the following command in the console: install.packages(c("tidyverse", "curl", "sf"))
+Before running the files, run the following command in the console: install.packages(c("tidyverse", "curl", "sf", "leaflet", "RColorBrewer"))
 
 The files are:
 

@@ -1,0 +1,71 @@
+---
+title: "Housing-related Census Data in the Region of Waterloo"
+author: "Craig A. Sloss"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(sf)
+library(leaflet)
+library(RColorBrewer)
+census = readRDS("./data/selected_census_records.rds")
+percentage_renter_dataset = census %>%
+  filter(CHARACTERISTIC_NAME == "Renter") %>%
+  select(GEO_NAME, pct_renter = C10_RATE_TOTAL)
+percentage_high_housing_cost_dataset = census %>%
+  filter(CHARACTERISTIC_NAME == "Spending 30% or more of income on shelter costs") %>%
+  select(GEO_NAME, pct_high_housing_cost = C10_RATE_TOTAL)
+da_lookup = readRDS("./data/da_lookup_table.rds")
+waterloo_region_map = read_sf(dsn = "./data/da_shapefile", layer = "lda_000b21a_e") %>%
+  st_transform("+proj=longlat +datum=WGS84") %>%
+  left_join(da_lookup) %>%
+  filter(CDNAME == "Waterloo") %>%
+  left_join(percentage_renter_dataset %>% rename(DAUID = GEO_NAME)) %>%
+  left_join(percentage_high_housing_cost_dataset %>% rename(DAUID = GEO_NAME))
+```
+
+#### Percentage of Renters in Waterloo Region
+
+```{r}
+pal <- colorNumeric(
+  palette = "Purples",
+  domain = waterloo_region_map$pct_renter
+)
+leaflet(waterloo_region_map) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(data = waterloo_region_map,
+              weight = 0,
+              color = ~pal(pct_renter),
+              fillOpacity = 0.5) %>%
+  addLegend(pal = pal, values = ~pct_renter, title = "") 
+```
+
+#### Percentage of Residents Paying More than 30% or more of Income on Shelter
+
+Note that this includes both owners and tenants..
+
+```{r}
+pal <- colorNumeric(
+  palette = "Purples",
+  domain = waterloo_region_map$pct_high_housing_cost
+)
+leaflet(waterloo_region_map) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(data = waterloo_region_map,
+              weight = 0,
+              color = ~pal(pct_high_housing_cost),
+              fillOpacity = 0.5) %>%
+  addLegend(pal = pal, values = ~pct_high_housing_cost, title = "") 
+```
+
+#### Data sources 
+
+* Statistics Canada, 2021 Census of Population (https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/details/download-telecharger.cfm?Lang=E)
+
+* Statistics Canada, 2021 Census Boundaries (https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/index2021-eng.cfm?Year=21)
+

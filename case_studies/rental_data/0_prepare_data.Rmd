@@ -44,7 +44,7 @@ To limit the amount of data loaded into memory, import only the following column
 ```{r}
 curl_download("https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/details/download-telecharger/comp/GetFile.cfm?Lang=E&FILETYPE=CSV&GEONO=006_Ontario", "./data/census_full.zip")
 unzip("./data/census_full.zip", exdir = "./data")
-census_selected_columns = read_csv("./data/98-401-X2021006_English_CSV_data_Ontario.csv", col_types = "-c-c-----c-n-----n-----")
+census_selected_columns = read_csv("./data/98-401-X2021006_English_CSV_data_Ontario.csv", col_types = "-c-cc----c-n-----n-----")
 ```
 
 ## Explore data
@@ -66,7 +66,8 @@ Limit data to the Dissemination Area level, and the characteristics listed above
 ```{r}
 census_DA_short = census_selected_columns %>%
   filter(GEO_LEVEL == "Dissemination area" &
-           CHARACTERISTIC_NAME %in% selected_characteristics)
+           CHARACTERISTIC_NAME %in% selected_characteristics) %>%
+  select(-GEO_LEVEL)
 ```
 
 Save the dataset for use in later notebooks:

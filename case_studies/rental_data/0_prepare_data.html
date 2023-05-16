@@ -395,7 +395,7 @@ population.</p></li>
 </ul>
 <pre class="r"><code>curl_download(&quot;https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/details/download-telecharger/comp/GetFile.cfm?Lang=E&amp;FILETYPE=CSV&amp;GEONO=006_Ontario&quot;, &quot;./data/census_full.zip&quot;)
 unzip(&quot;./data/census_full.zip&quot;, exdir = &quot;./data&quot;)
-census_selected_columns = read_csv(&quot;./data/98-401-X2021006_English_CSV_data_Ontario.csv&quot;, col_types = &quot;-c-c-----c-n-----n-----&quot;)</code></pre>
+census_selected_columns = read_csv(&quot;./data/98-401-X2021006_English_CSV_data_Ontario.csv&quot;, col_types = &quot;-c-cc----c-n-----n-----&quot;)</code></pre>
 <pre><code>## New names:
 ## • `SYMBOL` -&gt; `SYMBOL...13`
 ## • `SYMBOL` -&gt; `SYMBOL...15`
@@ -432,7 +432,8 @@ unique_characteristics</code></pre>
 listed above.</p>
 <pre class="r"><code>census_DA_short = census_selected_columns %&gt;%
   filter(GEO_LEVEL == &quot;Dissemination area&quot; &amp;
-           CHARACTERISTIC_NAME %in% selected_characteristics)</code></pre>
+           CHARACTERISTIC_NAME %in% selected_characteristics) %&gt;%
+  select(-GEO_LEVEL)</code></pre>
 <p>Save the dataset for use in later notebooks:</p>
 <pre class="r"><code>saveRDS(census_DA_short, &quot;./data/selected_census_records.rds&quot;)</code></pre>
 </div>
